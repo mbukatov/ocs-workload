@@ -37,6 +37,13 @@ data:
 
     '
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noobaa-service-ca
+  annotations:
+    service.beta.openshift.io/inject-cabundle: "true"
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -57,6 +64,9 @@ spec:
         volumeMounts:
         - mountPath: /etc/fio
           name: fio-config-volume
+        - name: service-ca-volume
+          mountPath: /etc/pki/tls/certs/service-ca.crt
+          subPath: service-ca.crt
         env:
         - name: BUCKET_NAME
           valueFrom:
@@ -88,3 +98,6 @@ spec:
       - name: fio-config-volume
         configMap:
           name: fio-config
+      - name: service-ca-volume
+        configMap:
+          name: noobaa-service-ca
