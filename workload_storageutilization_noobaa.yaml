@@ -1,0 +1,90 @@
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: fio-noobaa-target
+spec:
+  generateBucketName: fio-noobaa
+  storageClassName: openshift-storage.noobaa.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fio-config
+data:
+  workload.fio: '
+
+    [simple-write]
+
+    readwrite=write
+
+    ioengine=http
+
+    filename=/${BUCKET_NAME}/object
+
+    https=insecure
+
+    http_verbose=1
+
+    http_mode=s3
+
+    http_host=${BUCKET_HOST}:${BUCKET_PORT}
+
+    http_s3_keyid=${AWS_ACCESS_KEY_ID}
+
+    http_s3_key=${AWS_SECRET_ACCESS_KEY}
+
+    size=4G
+
+    '
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: fio
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      name: fio
+    spec:
+      containers:
+      - command:
+        - /usr/bin/fio
+        - --output-format=json
+        - /etc/fio/workload.fio
+        image: quay.io/mbukatov/mbukatov-fedora-fio:latest
+        name: fio
+        volumeMounts:
+        - mountPath: /etc/fio
+          name: fio-config-volume
+        env:
+        - name: BUCKET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: fio-noobaa-target
+              key: BUCKET_NAME
+        - name: BUCKET_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: fio-noobaa-target
+              key: BUCKET_HOST
+        - name: BUCKET_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: fio-noobaa-target
+              key: BUCKET_PORT
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: fio-noobaa-target
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fio-noobaa-target
+              key: AWS_SECRET_ACCESS_KEY
+      restartPolicy: Never
+      volumes:
+      - name: fio-config-volume
+        configMap:
+          name: fio-config
