@@ -5,6 +5,7 @@ from datetime import datetime
 import argparse
 import hashlib
 import logging
+import os
 import sys
 import time
 import uuid
@@ -19,6 +20,10 @@ def main():
         "-p",
         type=int,
         help="pause between 2 consequent writes in seconds")
+    ap.add_argument(
+        "--fsync",
+        action="store_true",
+        help="run fsync after each write")
     ap.add_argument(
         "-d",
         "--debug",
@@ -49,6 +54,8 @@ def main():
                 log_line = f"{timestamp.isoformat()} {data}\n"
                 log_file.write(log_line)
                 log_file.flush()
+                if args.fsync:
+                    os.fsync(log_file.fileno())
                 time.sleep(args.p)
             except KeyboardInterrupt:
                 logging.info("stopped")
