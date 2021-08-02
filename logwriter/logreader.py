@@ -26,6 +26,8 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
+    retcode = 0
+
     for fo in args.logfile:
         logging.info("log file %s opened", fo.name)
         prev_line = None
@@ -39,7 +41,10 @@ def main():
                     logging.error(
                         "line at %s doesn't provide good digest",
                         timestamp)
+                    retcode = 1
             prev_line = line
+
+    return retcode
 
 if __name__ == '__main__':
     sys.exit(main())
