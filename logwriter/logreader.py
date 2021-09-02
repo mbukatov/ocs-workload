@@ -29,14 +29,21 @@ def main():
     retcode = 0
 
     for fo in args.logfile:
-        logging.info("log file %s opened", fo.name)
+        logging.info("opened log file: %s", fo.name)
+        error_in_fo = False
         prev_line = None
         for line in fo:
             try:
                 timestamp, data = line.split()
             except ValueError:
-                logging.error("failed to read line: %s", line)
+                logging.error("failed to read line: %s", line.encode('unicode-escape'))
                 retcode = 1
+                error_in_fo = True
+                continue
+            if len(timestamp) != 26:
+                logging.error("incorrect timestamp format: %s", timestamp.encode('unicode-escape'))
+                retcode = 1
+                error_in_fo = True
                 continue
             if prev_line is not None:
                 checksum = hashlib.sha256(prev_line.encode('utf8')).hexdigest()
@@ -47,7 +54,14 @@ def main():
                         "line at %s doesn't provide good digest",
                         timestamp)
                     retcode = 1
+                    error_in_fo = True
             prev_line = line
+
+        if error_in_fo:
+            logging.error("log file is corrupted: %s", fo.name)
+        else:
+            logging.info("log file is ok: %s", fo.name)
+        error_in_fo = False
 
     return retcode
 
