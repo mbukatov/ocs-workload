@@ -32,7 +32,12 @@ def main():
         logging.info("log file %s opened", fo.name)
         prev_line = None
         for line in fo:
-            timestamp, data = line.split()
+            try:
+                timestamp, data = line.split()
+            except ValueError:
+                logging.error("failed to read line: %s", line)
+                retcode = 1
+                continue
             if prev_line is not None:
                 checksum = hashlib.sha256(prev_line.encode('utf8')).hexdigest()
                 if checksum == data:
