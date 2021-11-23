@@ -26,7 +26,7 @@ data:
 
     directory=/mnt/target
 
-    size=4G
+    fill_fs=1
 
     '
 kind: ConfigMap
