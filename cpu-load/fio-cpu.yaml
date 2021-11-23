@@ -1,0 +1,58 @@
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  workload.fio: '
+    [global]
+
+    ioengine=cpuio
+
+    [burn]
+
+    cpuload=90
+
+    numjobs=10
+
+    '
+metadata:
+  name: fio-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fio-cpu
+  labels:
+    app: fio-cpu
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fio-cpu
+  template:
+    metadata:
+      labels:
+        app: fio-cpu
+    spec:
+      topologySpreadConstraints:
+        - labelSelector:
+             matchLabels:
+               app: fio-cpu
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+      containers:
+      - name: fio
+        image: quay.io/mbukatov/mbukatov-fedora-fio:latest
+        command:
+        - /usr/bin/fio
+        - --output-format=json
+        - /etc/fio/workload.fio
+        volumeMounts:
+        - mountPath: /etc/fio
+          name: fio-config-volume
+      volumes:
+      - name: fio-config-volume
+        configMap:
+          name: fio-config
