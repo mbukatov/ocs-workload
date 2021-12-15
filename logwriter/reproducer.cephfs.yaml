@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logwriter-cephfs-many
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ocs-storagecluster-cephfs
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logwriter-cephfs
+  labels:
+    app: logwriter-cephfs
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: logwriter-cephfs
+  template:
+    metadata:
+      labels:
+        app: logwriter-cephfs
+    spec:
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app: logwriter-cephfs
+          maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+        - labelSelector:
+             matchLabels:
+               app: logwriter-cephfs
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+      containers:
+      - name: log-writer-reader
+        image: quay.io/mbukatov/logwriter:latest
+        command:
+        - /bin/bash
+        - "-c"
+        - "/opt/logwriter.py --fsync -d -p  10 . & /opt/logreader.py -r 1000000 *.log"
+        workingDir: /mnt/target
+        volumeMounts:
+        - mountPath: /mnt/target
+          name: logwriter-cephfs-volume
+      volumes:
+      - name: logwriter-cephfs-volume
+        persistentVolumeClaim:
+          claimName: logwriter-cephfs-many
